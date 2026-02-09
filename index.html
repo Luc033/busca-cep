@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Busca CEP Pro</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: #333;
+        }
+
+        .card {
+            background: white;
+            padding: 2rem;
+            border-radius: 15px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+        }
+
+        h1 {
+            margin-bottom: 1.5rem;
+            color: #4b2c85;
+            font-size: 1.5rem;
+        }
+
+        .search-box {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        input {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+
+        input:focus {
+            border-color: #764ba2;
+        }
+
+        button {
+            background-color: #764ba2;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+
+        button:hover {
+            background-color: #5a3782;
+        }
+
+        /* Área de Resultado com altura fixa para evitar quebras */
+        #resultado {
+            text-align: left;
+            min-height: 180px; /* Mantém o tamanho do card constante */
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        /* Animação de Loading (Spinner) */
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #764ba2;
+            border-radius: 50%;
+            margin: 0 auto;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .info-item {
+            padding: 8px 10px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            animation: fadeIn 0.5s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .label { font-weight: bold; color: #666; font-size: 0.9rem; }
+        .error { color: #d9534f; text-align: center; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h1>📍 Pesquisa de CEP</h1>
+
+    <div class="search-box"> 
+        <input id="ipt-cep" type="text" maxlength="9" placeholder="00000-000"> 
+        <button id="btn-submit">Buscar</button> 
+    </div>
+
+    <div id="resultado">
+        </div>
+</div>
+
+<script>
+const resultado = document.getElementById("resultado");
+const input = document.getElementById("ipt-cep");
+const btn = document.getElementById("btn-submit");
+
+// Máscara automática
+input.addEventListener("input", (e) => {
+    let value = e.target.value.replace(/\D/g, "");
+    if (value.length > 5) {
+        value = value.slice(0, 5) + "-" + value.slice(5, 8);
+    }
+    e.target.value = value;
+});
+
+// Busca ao clicar no botão
+btn.addEventListener("click", validarEBucar);
+
+// Busca ao apertar Enter
+input.addEventListener("keypress", (e) => {
+    if (e.key === "Enter") {
+        validarEBucar();
+    }
+});
+
+function validarEBucar() {
+    if (input.value.length >= 8) {
+        exibirResultado();
+    } else {
+        resultado.innerHTML = "<p class='error'>Digite um CEP completo.</p>";
+    }
+}
+
+async function pesquisaCep(cep) {
+    const cepLimpo = cep.replace(/\D/g, '');
+    try {
+        const resp = await fetch(`https://viacep.com.br/ws/${cepLimpo}/json/`);
+        return await resp.json();
+    } catch (e) {
+        return { erro: true };
+    }
+};
+
+async function exibirResultado() {
+    // Mostra o Spinner sem alterar o tamanho do card
+    resultado.innerHTML = '<div class="spinner"></div>';
+    
+    let dados = await pesquisaCep(input.value);
+
+    // Pequeno delay artificial só para você ver a animação (opcional)
+    // await new Promise(r => setTimeout(r, 500));
+
+    if (dados.erro) {
+        resultado.innerHTML = "<p class='error'>CEP não encontrado.</p>";
+    } else {
+        resultado.innerHTML = `
+            <div class="info-item"><span class="label">CEP:</span> <span>${dados.cep}</span></div>
+            <div class="info-item"><span class="label">Rua:</span> <span>${dados.logradouro || '---'}</span></div>
+            <div class="info-item"><span class="label">Bairro:</span> <span>${dados.bairro || '---'}</span></div>
+            <div class="info-item"><span class="label">Cidade:</span> <span>${dados.localidade} - ${dados.uf}</span></div>
+        `;
+    }
+};
+</script>
+
+</body>
+</html>
